@@ -1,1 +1,531 @@
- <!DOCTYPE html> <html> <head> <title>Signal ilova</title> </head> <body> <h1>Xush kelibsiz!</h1> </body> </html>
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTC Live Scanner & Analyzer</title>
+    <style>
+        :root {
+            --bg: #0b0e14;
+            --panel: #131720;
+            --border: #1e2433;
+            --text: #d1d5db;
+            --muted: #6b7280;
+            --green: #10b981;
+            --red: #ef4444;
+            --amber: #f59e0b;
+            --blue: #3b82f6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.3px; }
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--green);
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+            margin-right: 6px;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .badge {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+        .badge.live { color: var(--green); border-color: var(--green); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .card-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 14px;
+            font-weight: 600;
+        }
+
+        .asset-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .asset-btn {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.15s;
+        }
+        .asset-btn:hover { border-color: var(--blue); }
+        .asset-btn.active {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .metric-row:last-child { border-bottom: none; }
+        .metric-label { font-size: 0.85rem; color: var(--muted); }
+        .metric-value { font-weight: 600; font-size: 0.95rem; }
+        .up { color: var(--green); }
+        .down { color: var(--red); }
+        .neutral { color: var(--amber); }
+
+        .signal-box {
+            text-align: center;
+            padding: 24px 12px;
+            border-radius: 10px;
+            margin: 12px 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+        }
+        .signal-call { color: var(--green); font-size: 2rem; font-weight: 800; letter-spacing: 2px; }
+        .signal-put { color: var(--red); font-size: 2rem; font-weight: 800; letter-spacing: 2px; }
+        .signal-wait { color: var(--amber); font-size: 2rem; font-weight: 800; letter-spacing: 2px; }
+        .signal-sub { font-size: 0.75rem; color: var(--muted); margin-top: 6px; }
+
+        .reverse-box {
+            background: rgba(59,130,246,0.08);
+            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+        .reverse-box .label { font-size: 0.75rem; color: var(--blue); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+        .reverse-box .value { font-size: 1.1rem; font-weight: 700; }
+
+        .log {
+            max-height: 260px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+        }
+        .log-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 8px;
+        }
+        .log-item:last-child { border-bottom: none; }
+        .log-time { color: var(--muted); white-space: nowrap; }
+        .log-pair { font-weight: 600; white-space: nowrap; }
+        .log-dir { font-weight: 700; white-space: nowrap; }
+
+        .disclaimer {
+            margin-top: 20px;
+            padding: 12px 16px;
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.3);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: var(--amber);
+            line-height: 1.5;
+        }
+
+        .refresh-bar {
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .refresh-bar-inner {
+            height: 100%;
+            width: 100%;
+            background: var(--blue);
+            transition: width 0.3s linear;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>⚡ OTC Live Scanner</h1>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span class="badge live"><span class="status-dot"></span>SIMULYATSIYA</span>
+        <span class="badge" id="clock">--:--:--</span>
+    </div>
+</div>
+
+<div class="grid">
+
+    <!-- ASSET SELECTOR & SIGNAL -->
+    <div class="card">
+        <div class="card-title">Tahlil ob'ekti</div>
+        <div class="asset-selector" id="assetSelector"></div>
+
+        <div class="signal-box" id="signalBox">
+            <div class="signal-wait" id="signalText">KUTISH</div>
+            <div class="signal-sub" id="signalSub">Ma'lumot yig'ilmoqda...</div>
+        </div>
+
+        <div class="metric-row">
+            <span class="metric-label">Ishonch darajasi</span>
+            <span class="metric-value neutral" id="confidence">--</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">Tavsiya etilgan expiry</span>
+            <span class="metric-value" id="expiry">--</span>
+        </div>
+
+        <div class="refresh-bar"><div class="refresh-bar-inner" id="refreshBar"></div></div>
+    </div>
+
+    <!-- INDICATORS -->
+    <div class="card">
+        <div class="card-title">Indikatorlar</div>
+        <div class="metric-row">
+            <span class="metric-label">RSI (14)</span>
+            <span class="metric-value" id="rsiVal">--</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">MACD (12,26,9)</span>
+            <span class="metric-value" id="macdVal">--</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">EMA 20 / EMA 50</span>
+            <span class="metric-value" id="emaVal">--</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">Bollinger (20,2)</span>
+            <span class="metric-value" id="bbVal">--</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-label">Stochastic (14,3)</span>
+            <span class="metric-value" id="stochVal">--</span>
+        </div>
+    </div>
+
+    <!-- REVERSE RSI -->
+    <div class="card">
+        <div class="card-title">🔄 Teskari hisoblash (Reverse RSI)</div>
+        <p style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;line-height:1.4;">
+            Joriy RSI qiymatiga erishish uchun narx qanday darajada bo'lishi kerakligini hisoblaydi.
+        </p>
+        <div class="reverse-box">
+            <div class="label">Narx (RSI = 70 / Overbought)</div>
+            <div class="value up" id="revRSI70">--</div>
+        </div>
+        <div class="reverse-box" style="margin-top:8px;">
+            <div class="label">Narx (RSI = 30 / Oversold)</div>
+            <div class="value down" id="revRSI30">--</div>
+        </div>
+        <div class="reverse-box" style="margin-top:8px;">
+            <div class="label">Narx (RSI = 50 / Neytral)</div>
+            <div class="value" id="revRSI50">--</div>
+        </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="card">
+        <div class="card-title">Signal jurnali (so'nggi)</div>
+        <div class="log" id="logContainer">
+            <div style="color:var(--muted);font-size:0.8rem;padding:8px 0;">Signal kutilmoqda...</div>
+        </div>
+    </div>
+
+</div>
+
+<div class="disclaimer">
+    ⚠️ <strong>Ogohlantirish:</strong> Ushbu vosita faqat ta'limiy maqsadda. OTC bozorlari tasodifiy 
+    harakat qiladi va o'tmishdagi natijalar kelajakni kafolatlamaydi. Hech qanday indikator 
+    kombinatsiyasi barqaror 80%+ winrate bermaydi[reference:2]. Savdo qilishdan oldin 
+    o'z strategiyangizni demo hisobda sinab ko'ring.
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ---------- CONFIG ----------
+    const ASSETS = ['EUR/USD OTC', 'GBP/USD OTC', 'USD/JPY OTC', 'AUD/USD OTC', 'BTC/USD OTC'];
+    const REFRESH_MS = 3000;
+
+    // ---------- STATE ----------
+    let activeAsset = ASSETS[0];
+    let priceHistory = {};   // { asset: [prices] }
+    let signalLog = [];
+    let tickCounter = 0;
+
+    ASSETS.forEach(a => priceHistory[a] = []);
+
+    // ---------- UTILS ----------
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+
+    function fmt(n, d = 5) {
+        if (n === null || n === undefined || isNaN(n)) return '--';
+        return Number(n).toFixed(d);
+    }
+
+    function nowTime() {
+        return new Date().toLocaleTimeString('uz-UZ', { hour12: false });
+    }
+
+    // ---------- SIMULATED PRICE FEED ----------
+    // Haqiqiy OTC API mavjud bo'lmagani uchun tasodifiy yurish simulyatsiyasi.
+    function generateNextPrice(asset) {
+        const hist = priceHistory[asset];
+        let last = hist.length ? hist[hist.length - 1] : rand(1.0800, 1.0900);
+        if (asset.includes('JPY')) last = hist.length ? hist[hist.length-1] : rand(148, 152);
+        if (asset.includes('BTC')) last = hist.length ? hist[hist.length-1] : rand(60000, 70000);
+        const volatility = asset.includes('BTC') ? 50 : (asset.includes('JPY') ? 0.05 : 0.0004);
+        return last + rand(-volatility, volatility);
+    }
+
+    // ---------- INDICATOR CALCULATIONS ----------
+
+    function calcRSI(prices, period = 14) {
+        if (prices.length < period + 1) return null;
+        let gains = 0, losses = 0;
+        for (let i = prices.length - period; i < prices.length; i++) {
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) gains += diff; else losses -= diff;
+        }
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+        if (avgLoss === 0) return 100;
+        const rs = avgGain / avgLoss;
+        return 100 - (100 / (1 + rs));
+    }
+
+    function calcEMA(prices, period) {
+        if (prices.length < period) return null;
+        const k = 2 / (period + 1);
+        let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+        for (let i = period; i < prices.length; i++) {
+            ema = prices[i] * k + ema * (1 - k);
+        }
+        return ema;
+    }
+
+    function calcMACD(prices) {
+        const ema12 = calcEMA(prices, 12);
+        const ema26 = calcEMA(prices, 26);
+        if (ema12 === null || ema26 === null) return null;
+        return ema12 - ema26;
+    }
+
+    function calcBollinger(prices, period = 20, mult = 2) {
+        if (prices.length < period) return null;
+        const slice = prices.slice(-period);
+        const sma = slice.reduce((a, b) => a + b, 0) / period;
+        const variance = slice.reduce((a, b) => a + (b - sma) ** 2, 0) / period;
+        const sd = Math.sqrt(variance);
+        return { upper: sma + mult * sd, lower: sma - mult * sd, mid: sma };
+    }
+
+    function calcStochastic(prices, period = 14) {
+        if (prices.length < period) return null;
+        const slice = prices.slice(-period);
+        const high = Math.max(...slice);
+        const low = Math.min(...slice);
+        const close = prices[prices.length - 1];
+        if (high === low) return 50;
+        return ((close - low) / (high - low)) * 100;
+    }
+
+    // ---------- REVERSE RSI (Teskari hisoblash) ----------
+    // RSI formulasini teskari yechish orqali berilgan RSI darajasiga mos narxni topadi.
+    // RSI = 100 - (100 / (1 + RS)), RS = avgGain / avgLoss
+    // Agar maqsad RSI = target bo'lsa:
+    //   target = 100 - 100/(1+RS)  =>  RS = (100/(100-target)) - 1
+    //   avgGain / avgLoss = RS
+    // Joriy o'rtacha gain/loss nisbatidan foydalanib, kerakli narx o'zgarishini taxmin qilamiz.
+    function reverseRSI(prices, period = 14, targetRSI = 70) {
+        if (prices.length < period + 1) return null;
+
+        // Joriy avgGain va avgLoss ni hisoblash
+        let gains = 0, losses = 0;
+        for (let i = prices.length - period; i < prices.length; i++) {
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) gains += diff; else losses -= diff;
+        }
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+
+        // Maqsad RS
+        const targetRS = (100 / (100 - targetRSI)) - 1;
+        if (targetRS <= 0) return null;
+
+        // Kerakli avgGain (avgLoss ni o'zgarmas deb hisoblaymiz)
+        const requiredGain = targetRS * avgLoss;
+
+        // Joriy narxdan kerakli narxga o'tish uchun zarur bo'lgan o'rtacha o'sish
+        // requiredGain = (jami gain) / period  => jami gain = requiredGain * period
+        // Hozirgi jami gain = avgGain * period
+        // Farq = (requiredGain - avgGain) * period
+        // Bu farqni joriy narxga qo'shamiz (agar ijobiy bo'lsa) yoki ayiramiz.
+        const deltaTotal = (requiredGain - avgGain) * period;
+        const currentPrice = prices[prices.length - 1];
+
+        // Agar targetRSI > joriy RSI bo'lsa, narx o'sishi kerak; aks holda tushishi.
+        const currentRSI = calcRSI(prices, period);
+        let projectedPrice;
+        if (targetRSI > currentRSI) {
+            projectedPrice = currentPrice + Math.abs(deltaTotal);
+        } else {
+            projectedPrice = currentPrice - Math.abs(deltaTotal);
+        }
+
+        // Agar avgLoss = 0 (RSI=100), maxsus holat
+        if (avgLoss === 0 && targetRSI < 100) {
+            // Narx tushishi kerak
+            const syntheticLoss = (avgGain * period) / targetRS;
+            projectedPrice = currentPrice - syntheticLoss;
+        }
+
+        return projectedPrice;
+    }
+
+    // ---------- SIGNAL GENERATION ----------
+    function generateSignal(asset) {
+        const prices = priceHistory[asset];
+        if (prices.length < 30) return { dir: 'WAIT', confidence: 0, expiry: '--' };
+
+        const rsi = calcRSI(prices);
+        const macd = calcMACD(prices);
+        const ema20 = calcEMA(prices, 20);
+        const ema50 = calcEMA(prices, 50);
+        const bb = calcBollinger(prices);
+        const stoch = calcStochastic(prices);
+        const price = prices[prices.length - 1];
+
+        let score = 0;
+        let reasons = [];
+
+        // RSI
+        if (rsi !== null) {
+            if (rsi < 30) { score += 1; reasons.push('RSI oversold'); }
+            else if (rsi > 70) { score -= 1; reasons.push('RSI overbought'); }
+        }
+        // MACD
+        if (macd !== null) {
+            if (macd > 0) { score += 0.5; } else { score -= 0.5; }
+        }
+        // EMA trend
+        if (ema20 !== null && ema50 !== null) {
+            if (ema20 > ema50) { score += 1; } else { score -= 1; }
+        }
+        // Bollinger
+        if (bb !== null) {
+            if (price <= bb.lower) { score += 1; reasons.push('Pastki band'); }
+            else if (price >= bb.upper) { score -= 1; reasons.push('Yuqori band'); }
+        }
+        // Stochastic
+        if (stoch !== null) {
+            if (stoch < 20) { score += 0.5; } else if (stoch > 80) { score -= 0.5; }
+        }
+
+        let dir = 'WAIT';
+        let confidence = 0;
+        if (score >= 2) { dir = 'CALL'; confidence = Math.min(95, 50 + score * 10); }
+        else if (score <= -2) { dir = 'PUT'; confidence = Math.min(95, 50 + Math.abs(score) * 10); }
+        else { dir = 'WAIT'; confidence = 40; }
+
+        // Expiry tavsiyasi
+        let expiry = '--';
+        if (dir !== 'WAIT') {
+            const volatility = Math.abs(prices[prices.length-1] - prices[prices.length-2]) / prices[prices.length-2];
+            if (volatility > 0.001) expiry = '1 daqiqa';
+            else if (volatility > 0.0003) expiry = '2 daqiqa';
+            else expiry = '5 daqiqa';
+        }
+
+        return { dir, confidence, expiry, reasons, score };
+    }
+
+    // ---------- UI UPDATE ----------
+    function updateUI() {
+        const asset = activeAsset;
+        const prices = priceHistory[asset];
+
+        // Signal
+        const sig = generateSignal(asset);
+        const sigText = document.getElementById('signalText');
+        const sigSub = document.getElementById('signalSub');
+        sigText.className = 'signal-' + sig.dir.toLowerCase();
+        sigText.textContent = sig.dir === 'WAIT' ? 'KUTISH' : sig.dir;
+        sigSub.textContent = sig.dir === 'WAIT'
+            ? 'Shartlar yetarli emas'
+            : (sig.reasons && sig.reasons.length ? sig.reasons.join(' · ') : 'Indikatorlar mos');
+
+        document.getElementById('confidence').textContent = sig.confidence + '%';
+        document.getElementById('confidence').className = 'metric-value ' +
+            (sig.confidence >= 70 ? 'up' : sig.confidence >= 50 ? 'neutral' : 'down');
+        document.getElementById('expiry').textContent = sig.expiry;
+
+        // Indicators
+        const rsi = calcRSI(prices);
+        const macd = calcMACD(prices);
+        const ema20 = calcEMA(prices, 20);
+        const ema50 = calcEMA(prices, 50);
+        const bb = calcBollinger(prices);
+        const stoch = calcStochastic(prices);
+
+        document.getElementById('rsiVal').textContent = rsi !== null ? rsi.toFixed(1) : '--';
+        document.getElementById('rsiVal').className = 'metric-value ' +
+            (rsi !== null ? (rsi < 30 ? 'up' : rsi > 70 ? 'down' : 'neutral') : '');
+
+        document.getElementById('macdVal').textContent = macd !== null ? macd.toFixed(5) : '--';
+        document.getElementById('macdVal').className = 'metric-value ' +
+            (macd !== null ? (macd > 0 ? 'up' : 'down') : '');
+
+        const emaTxt = (ema20 !== null && ema50 !== null)
+            ? `${fmt(ema20)} / ${fmt(ema50)} (${ema20 > ema50 ? 'Bull' : 'Bear'})`
+            : '--';
+        document.getElementById('emaVal').textContent = emaTxt;
+        document.getElementById('emaVal').className = 'metric-value ' +
+            (ema20 !== null && ema50 !== null ? (ema20 > ema50 ? 'up' : 'down') : '');
+
+        if (bb !== null) {
+            const pos = prices[prices.length-1];
+            const pct = ((pos - bb.lower) / (bb.upper - bb.lower)) * 100;
+            document.getElementById('bbVal').textContent = `${pct.toFixed(0)}% band`;
+            document.getElementById('bbVal').className = 'metric-value ' +
+                (pct < 20 ? 'up' : pct > 80 ? 'down' : 'neutral');
+        } else {
+            document.getElementById('bbVal').textContent = '--';
+        }
+
+        document.getElementById('stochVal').textContent = st
