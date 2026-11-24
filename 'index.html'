@@ -528,4 +528,4 @@
             document.getElementById('bbVal').textContent = '--';
         }
 
-        document.getElementById('stochVal').textContent = st
+        document.getElementById('stochVal').textContent = st  <!DOCTYPE html> <html> <head> <title>Signal Generator</title> </head> <body> <h1>Signal Generator</h1> <button onclick="generateSignal()">Signal olish</button> <p id="signal"></p> <script> function generateSignal() { const signals = ["Yuqori (Call)", "Past (Put)"]; const randomSignal = signals[Math.floor(Math.random() * signals.length)]; document.getElementById("signal").innerText = "Signal: " + randomSignal; } </script> </body> </html>
